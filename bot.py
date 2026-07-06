@@ -6,42 +6,54 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-api_key = os.getenv("TELEGRAM-API-KEY")
+telegram_api_key = os.getenv("TELEGRAM-API-KEY")
+openai_api_key = os.getenv("OPEN-AI-API-KEY")
 
 # *ПОВНИЙ КОД МОЖНА ПЕРЕГЛЯНУТИ НА GITHUB: https://github.com/Selector0073/javarush-marathon
 
 # ---
 
 async def start(update, context):
-    #await send_photo(update, context, "avatar_main")
-    #await send_text(update, context, "Привіт користувач!")
     msg = load_message("main")
+    await send_photo(update, context, "main")
     await send_text(update, context, msg)
-
-async def hello(update, context):
-    await send_text_buttons(update, context, "Hello " + update.message.text, {
-        "start": "START",
-        "stop": "STOP"
+    await show_main_menu(update,context, {
+        "start": "Головне меню",
+        "profile": "Генерація Tinder-профіля \uD83D\uDE0E", 
+        "opener": "Повідомлення для знайомства \uD83E\uDD70", 
+        "message": "Переписка вiд вашого імені \uD83D\uDE08", 
+        "date": "Спілкування з зірками \uD83D\uDD25", 
+        "gpt": "Задати питання ChatGPт \uD83E\uDDE0"
     })
 
-async def buttons_handler(update, context):
-    query = update.callback_query.data
-    if query == "start":
-        await send_text(update, context, "You pressed START")
-    elif query == "stop":
-        await send_text(update, context, "You pressed STOP")
-
 async def gpt(update, context):
-    pass
+    dialog.mode = "gpt"
+    await send_photo(update, context, "gpt")
+    msg = load_message("gpt")
+    await send_text(update, context, msg)
+
+async def gpt_dialog(update, context):
+    text = update.message.text
+    promt = load_prompt("gpt")
+    answer = await chatgpt.send_question(promt, text)
+    await send_text(update, context, answer)
+
+async def hello(update, context):
+    if dialog.mode == "gpt":
+        await gpt_dialog(update, context)
 
 # ---
 
 
+dialog = Dialog()
+dialog.mode = None
 
-app = ApplicationBuilder().token(api_key).build()
+chatgpt = ChatGptService(token=openai_api_key)
+
+app = ApplicationBuilder().token(telegram_api_key).build()
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("gpt", gpt))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hello))
-app.add_handler(CallbackQueryHandler(buttons_handler))
 
 print("Started")
 
